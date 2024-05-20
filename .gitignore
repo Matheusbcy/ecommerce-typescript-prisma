@@ -1,0 +1,45 @@
+# Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependências do Node.js
+/node_modules
+/package-lock.json
+
+# Dependências do Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Dependências do Java
+*.class
+*.jar
+*.war
+*.ear
+
+# IDEs e Editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.user
+
+# Arquivos de configuração locais
+.env
+.local
+
+# Outros
+*.swp
+*.bak
+*.tmp
+*.old
+*.orig
