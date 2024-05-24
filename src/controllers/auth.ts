@@ -5,33 +5,40 @@ import * as jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../secrets";
 import { BadRequestsException } from "../exceptions/bad-request";
 import { ErrorCode } from "../exceptions/root";
+import { UnprocessableEntity } from "../exceptions/validation";
+import { SignUpSchema } from "../schema/users";
 
 export const signup = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const { nome, email, password } = req.body;
-  const saltsRonds = 8;
-  const hashedPassword = bcrypt.hashSync(password, saltsRonds);
+  try {
+    SignUpSchema.parse(req.body)
+    const { nome, email, password } = req.body;
+    const saltsRonds = 8;
+    const hashedPassword = bcrypt.hashSync(password, saltsRonds);
 
-  let user = await prismaClient.user.findFirst({ where: { email } });
-  if (user) {
-    return next(
-      new BadRequestsException(
-        "User already exists!",
-        ErrorCode.USER_ALREADY_EXISTS
-      )
-    );
+    let user = await prismaClient.user.findFirst({ where: { email } });
+    if (user) {
+      return next(
+        new BadRequestsException(
+          "User already exists!",
+          ErrorCode.USER_ALREADY_EXISTS
+        )
+      );
+    }
+    user = await prismaClient.user.create({
+      data: {
+        nome,
+        email,
+        password: hashedPassword,
+      },
+    });
+    res.status(201).json(user);
+  } catch (error: any) {
+    next( new UnprocessableEntity(error?.issues, 'Unprocessabe entity', ErrorCode.UNPROCESSABLE_ENTITY))
   }
-  user = await prismaClient.user.create({
-    data: {
-      nome,
-      email,
-      password: hashedPassword,
-    },
-  });
-  res.status(201).json(user);
 };
 
 export const login = async (
