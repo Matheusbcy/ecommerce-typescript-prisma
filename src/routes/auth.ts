@@ -1,10 +1,10 @@
-import { Router } from 'express'
-import { login, signup } from '../controllers/auth'
+import { Router } from "express";
+import { login, signup } from "../controllers/auth";
+import { errorHandle } from "../error-handler";
 
+const authRoutes: Router = Router();
 
-const authRoutes: Router = Router()
+authRoutes.post("/signup", errorHandle(signup));
+authRoutes.post("/login", errorHandle(login));
 
-authRoutes.post('/signup', signup)
-authRoutes.post('/login', login)
-
-export default authRoutes
+export default authRoutes;
