@@ -7,6 +7,7 @@ import { BadRequestsException } from "../exceptions/bad-request";
 import { ErrorCode } from "../exceptions/root";
 import { SignUpSchema } from "../schema/users";
 import { NotFound } from "../exceptions/not-found";
+import { UnprocessableEntity } from "../exceptions/validation";
 
 export const signup = async (
   req: Request,
@@ -34,7 +35,6 @@ export const signup = async (
   });
   res.status(201).json(user);
 };
-
 export const login = async (
   req: Request,
   res: Response,
@@ -61,4 +61,8 @@ export const login = async (
     JWT_SECRET
   );
   res.json({ user, token });
+};
+// /me => return the logged in user
+export const me = async (req: Request, res: Response, next: NextFunction) => {
+  res.json(req.user);
 };
