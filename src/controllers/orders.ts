@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { prismaClient } from "..";
+import { NotFound } from "../exceptions/not-found";
+import { ErrorCode } from "../exceptions/root";
+import { BadRequestsException } from "../exceptions/bad-request";
 
 export const createOrder = async (req: Request, res: Response) => {
   // 5. to define computed field for formatted address on address module (index.ts)
@@ -62,6 +65,83 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.json(order);
   });
 };
-export const listOrders = async (req: Request, res: Response) => {};
-export const cancelOrder = async (req: Request, res: Response) => {};
-export const getOrderById = async (req: Request, res: Response) => {};
+
+export const listOrders = async (req: Request, res: Response) => {
+  console.log(req.user.id);
+  const orders = await prismaClient.order.findMany({
+    where: {
+      userId: +req.user.id,
+    },
+  });
+
+  res.json(orders);
+};
+
+export const cancelOrder = async (req: Request, res: Response) => {
+    try {
+      // 1. Wrap it inside transaction
+      const order = await prismaClient.$transaction(async (tx) => {
+        const orderCheck = await tx.order.findFirst({
+          where: {
+            id: +req.params.id,
+          },
+        });
+  
+        // 2. Check if the user is cancelling their own order
+        if (!orderCheck || orderCheck.userId !== req.user.id) {
+          throw new NotFound(
+            "You are not allowed to delete this order item",
+            ErrorCode.UNAUTHORIZED,
+            null
+          );
+        }
+  
+        // Update the order status to 'CANCELLED'
+        const updatedOrder = await tx.order.update({
+          where: {
+            id: +req.params.id,
+          },
+          data: {
+            status: "CANCELLED",
+          },
+        });
+  
+        // Create an order event for cancellation
+        await tx.orderEvent.create({
+          data: {
+            orderId: updatedOrder.id,
+            status: "CANCELLED",
+          },
+        });
+  
+        return updatedOrder;
+      });
+  
+      // Send the response
+      res.json(order);
+  
+    } catch (err) {
+      if (err instanceof NotFound) {
+        res.status(404).json({ message: err.message });
+      } else {
+        res.status(500).json({ message: "An error occurred while cancelling the order." });
+      }
+    }
+  };
+
+export const getOrderById = async (req: Request, res: Response) => {
+  try {
+    const order = await prismaClient.order.findFirstOrThrow({
+      where: {
+        id: +req.params.id,
+      },
+      include: {
+        products: true,
+        events: true,
+      },
+    });
+    res.json(order);
+  } catch (err) {
+    throw new NotFound("Order not found", ErrorCode.ORDER_NOT_FOUND, null);
+  }
+};
