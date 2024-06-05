@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -71,7 +72,9 @@ model Product {
   cartItems CartItem[]
   orders    OrderProduct[]
 
+  @@fulltext([name, description, tags])
   @@map("products")
+
 }
 
 model CartItem {
