@@ -135,3 +135,4 @@ export const changeUserRole = async (req: Request, res: Response) => {
     throw new NotFound("User not found", ErrorCode.USER_NOT_FOUND, null);
   }
 };
+

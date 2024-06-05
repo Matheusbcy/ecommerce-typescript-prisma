@@ -78,56 +78,57 @@ export const listOrders = async (req: Request, res: Response) => {
 };
 
 export const cancelOrder = async (req: Request, res: Response) => {
-    try {
-      // 1. Wrap it inside transaction
-      const order = await prismaClient.$transaction(async (tx) => {
-        const orderCheck = await tx.order.findFirst({
-          where: {
-            id: +req.params.id,
-          },
-        });
-  
-        // 2. Check if the user is cancelling their own order
-        if (!orderCheck || orderCheck.userId !== req.user.id) {
-          throw new NotFound(
-            "You are not allowed to delete this order item",
-            ErrorCode.UNAUTHORIZED,
-            null
-          );
-        }
-  
-        // Update the order status to 'CANCELLED'
-        const updatedOrder = await tx.order.update({
-          where: {
-            id: +req.params.id,
-          },
-          data: {
-            status: "CANCELLED",
-          },
-        });
-  
-        // Create an order event for cancellation
-        await tx.orderEvent.create({
-          data: {
-            orderId: updatedOrder.id,
-            status: "CANCELLED",
-          },
-        });
-  
-        return updatedOrder;
+  try {
+    // 1. Wrap it inside transaction
+    const order = await prismaClient.$transaction(async (tx) => {
+      const orderCheck = await tx.order.findFirst({
+        where: {
+          id: +req.params.id,
+        },
       });
-  
-      // Send the response
-      res.json(order);
-  
-    } catch (err) {
-      if (err instanceof NotFound) {
-        res.status(404).json({ message: err.message });
-      } else {
-        res.status(500).json({ message: "An error occurred while cancelling the order." });
+
+      // 2. Check if the user is cancelling their own order
+      if (!orderCheck || orderCheck.userId !== req.user.id) {
+        throw new NotFound(
+          "You are not allowed to delete this order item",
+          ErrorCode.UNAUTHORIZED,
+          null
+        );
       }
+
+      // Update the order status to 'CANCELLED'
+      const updatedOrder = await tx.order.update({
+        where: {
+          id: +req.params.id,
+        },
+        data: {
+          status: "CANCELLED",
+        },
+      });
+
+      // Create an order event for cancellation
+      await tx.orderEvent.create({
+        data: {
+          orderId: updatedOrder.id,
+          status: "CANCELLED",
+        },
+      });
+
+      return updatedOrder;
+    });
+
+    // Send the response
+    res.json(order);
+  } catch (err) {
+    if (err instanceof NotFound) {
+      res.status(404).json({ message: err.message });
+    } else {
+      res
+        .status(500)
+        .json({ message: "An error occurred while cancelling the order." });
     }
-  };
+  }
+};
 
 export const getOrderById = async (req: Request, res: Response) => {
   try {
@@ -144,4 +145,69 @@ export const getOrderById = async (req: Request, res: Response) => {
   } catch (err) {
     throw new NotFound("Order not found", ErrorCode.ORDER_NOT_FOUND, null);
   }
+};
+
+export const listAllOrders = async (req: Request, res: Response) => {
+  let whereClause = {};
+  const status = req.query.status;
+  if (status) {
+    whereClause = {
+      status,
+    };
+  }
+  let skipping: any = req.query.skip || 0;
+  const orders = await prismaClient.order.findMany({
+    where: whereClause,
+    skip: skipping,
+    take: 5,
+  });
+  res.json(orders);
+};
+export const changeStatus = async (req: Request, res: Response) => {
+  try {
+    // Envolvendo as operações dentro de uma transação
+    const order = await prismaClient.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: {
+          id: +req.params.id,
+        },
+        data: {
+          status: req.body.status,
+        },
+      });
+
+      await tx.orderEvent.create({
+        data: {
+          orderId: updatedOrder.id,
+          status: req.body.status,
+        },
+      });
+
+      return updatedOrder;
+    });
+
+    // Enviar a resposta ao cliente fora do escopo da transação
+    res.json(order);
+  } catch (error) {
+    throw new NotFound("Order not found", ErrorCode.ORDER_NOT_FOUND, null);
+  }
+};
+export const listUsersOrders = async (req: Request, res: Response) => {
+  let whereClause: any = {
+    userId: +req.params.id
+  };
+  const status = req.params.status;
+  if (status) {
+    whereClause = {
+      ...whereClause,
+      status,
+    };
+  }
+  let skipping: any = req.query.skip || 0;
+  const orders = await prismaClient.order.findMany({
+    where: whereClause,
+    skip: skipping,
+    take: 5,
+  });
+  res.json(orders);
 };
